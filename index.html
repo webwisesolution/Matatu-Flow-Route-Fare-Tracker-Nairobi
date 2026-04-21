@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Matatu Flow · Route & Fare Tracker | Nairobi</title>
+  <!-- Tailwind + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #f4f7fc; }
+    .card-hover {
+      transition: all 0.2s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px -12px rgba(0, 0, 0, 0.15);
+    }
+    .stage-badge {
+      transition: all 0.1s ease;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #e2e8f0;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #f97316;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+  <div class="max-w-7xl mx-auto px-4 py-6 md:py-8">
+    <!-- header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6 border-b border-orange-200 pb-4">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-800">🚐 Matatu<span class="text-orange-600">Flow</span></h1>
+        <p class="text-gray-500 text-sm mt-1">Live routes · Smart fares · Crowdsourced intelligence</p>
+      </div>
+      <div class="flex gap-2 items-center bg-white/70 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm text-sm">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+        </span>
+        <span class="font-medium text-gray-700">live simulated data</span>
+        <span class="text-gray-400 mx-1">•</span>
+        <span class="text-gray-600">crowdsourced reports</span>
+      </div>
+    </div>
+
+    <!-- main grid: 3 cols (responsive) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- LEFT COLUMN: Stage navigation & fare core -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- Fare & peak card -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 card-hover">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-lg text-gray-800 flex items-center gap-2"><span class="text-orange-500">💰</span> Fare tracker</h2>
+            <div class="flex items-center gap-2 bg-gray-100 rounded-full p-1">
+              <button id="peakToggleBtn" class="px-4 py-1.5 text-sm font-semibold rounded-full transition-all shadow-sm">🌙 Off-peak</button>
+            </div>
+          </div>
+          <div class="bg-orange-50 rounded-xl p-3 mb-2">
+            <div class="flex justify-between text-sm">
+              <span class="font-medium text-gray-700">Current mode:</span>
+              <span id="peakModeLabel" class="font-bold text-orange-700">OFF-PEAK (standard fare)</span>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Peak: 6am-10am & 4pm-8pm (×1.3)</span>
+              <span>Off-peak: ×1.0</span>
+            </div>
+          </div>
+          <div class="text-xs text-gray-400 text-center mt-1">💡 Fares update dynamically • user reports override standard calculation</div>
+        </div>
+
+        <!-- Stage-to-stage navigation -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 card-hover">
+          <h2 class="font-bold text-lg text-gray-800 flex items-center gap-2 mb-4"><span class="text-orange-500">🔄</span> Stage-to-stage navigation</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Select route</label>
+              <select id="navRouteSelect" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 bg-gray-50 focus:ring-2 focus:ring-orange-300 focus:outline-none transition"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Origin stage</label>
+                <select id="originStageSelect" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 bg-gray-50 focus:ring-orange-300"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Destination stage</label>
+                <select id="destStageSelect" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 bg-gray-50 focus:ring-orange-300"></select>
+              </div>
+            </div>
+
+            <!-- journey summary -->
+            <div class="bg-gray-50 rounded-xl p-4 mt-2">
+              <div class="text-sm font-medium text-gray-500">🗺️ Stages traversed</div>
+              <div id="stagesPathContainer" class="flex flex-wrap gap-1.5 mt-2 text-sm font-medium"></div>
+              <div class="border-t border-gray-200 my-3"></div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-700 font-semibold">Total fare</span>
+                <div class="text-right">
+                  <span id="calculatedFareAmount" class="text-2xl font-black text-orange-600">0</span>
+                  <span class="text-gray-500 text-sm"> KES</span>
+                  <span id="overrideBadge" class="ml-2 text-[11px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full hidden">reported</span>
+                </div>
+              </div>
+              <div id="fareNote" class="text-[11px] text-gray-400 mt-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- route stage list preview -->
+        <div class="bg-white/80 rounded-2xl shadow-sm border border-gray-100 p-4">
+          <h3 class="font-semibold text-sm text-gray-600 mb-2 flex items-center gap-1"><span class="text-orange-500">📍</span> Current route stages</h3>
+          <div id="routeStagesPreview" class="flex flex-wrap gap-2 text-xs"></div>
+        </div>
+      </div>
+
+      <!-- MIDDLE COLUMN: Live matatu routes (simulated crowdsourced) -->
+      <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 card-hover">
+          <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
+            <h2 class="font-bold text-lg text-gray-800 flex items-center gap-2"><span class="text-orange-500">🚌</span> Live matatu routes</h2>
+            <span class="text-[11px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full">simulated real-time</span>
+          </div>
+          <div id="liveRoutesContainer" class="space-y-4">
+            <!-- dynamic route cards injected -->
+          </div>
+          <div class="text-center text-[11px] text-gray-400 mt-3">🔄 auto-updates every 6s • crowdsourced occupancy simulation</div>
+        </div>
+
+        <!-- Quick traffic & report tips -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-orange-100">
+          <div class="flex items-center gap-2 text-amber-800 font-semibold text-sm"><span>⚠️</span> Traffic sense</div>
+          <p class="text-xs text-gray-600 mt-1">User traffic reports appear below. Delay alerts help fellow commuters adjust routes.</p>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: User reports (fare changes + traffic) -->
+      <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-5 card-hover">
+          <h2 class="font-bold text-lg text-gray-800 flex items-center gap-2"><span class="text-orange-500">📢</span> Crowdsourced reports</h2>
+          <div class="mt-3 space-y-4">
+            <!-- report fare form -->
+            <div class="bg-gray-50 p-3 rounded-xl">
+              <p class="text-sm font-semibold flex items-center gap-1"><span class="text-orange-500">💸</span> Report fare change</p>
+              <div class="grid grid-cols-3 gap-2 mt-2">
+                <select id="reportRouteSelect" class="text-xs border rounded-lg p-1.5 bg-white"></select>
+                <select id="reportOriginSelect" class="text-xs border rounded-lg p-1.5 bg-white"></select>
+                <select id="reportDestSelect" class="text-xs border rounded-lg p-1.5 bg-white"></select>
+              </div>
+              <div class="flex gap-2 mt-2">
+                <input type="number" id="newFareAmount" placeholder="New fare (KES)" class="w-full border rounded-lg px-3 py-1.5 text-sm">
+                <button id="submitFareReportBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition">Report</button>
+              </div>
+            </div>
+            <!-- report traffic form -->
+            <div class="bg-gray-50 p-3 rounded-xl">
+              <p class="text-sm font-semibold flex items-center gap-1"><span class="text-red-500">🚦</span> Report traffic / incident</p>
+              <div class="flex gap-2 mt-2">
+                <select id="trafficRouteSelect" class="text-xs border rounded-lg p-1.5 bg-white w-2/5"></select>
+                <input type="text" id="trafficDesc" placeholder="E.g., heavy jam near Adams" class="w-full border rounded-lg px-3 py-1.5 text-sm">
+                <button id="submitTrafficBtn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm">Post</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent reports feed -->
+          <div class="mt-5">
+            <div class="flex justify-between items-center">
+              <h3 class="text-sm font-semibold text-gray-700">📋 Recent reports</h3>
+              <span id="reportCountBadge" class="text-[10px] bg-gray-200 px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <div id="reportsFeed" class="max-h-64 overflow-y-auto mt-2 space-y-2 text-sm">
+              <div class="text-center text-gray-400 text-xs py-4">No reports yet — be the first to share!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------- DATA MODELS -----------------------------
+    const routesData = [
+      { id: "r1", name: "🚐 45 Ngong Road", stages: ["Railway Station", "Hilton", "Jamhuri", "Adams", "Ngong Town"] },
+      { id: "r2", name: "🚍 23 Thika Road", stages: ["CBD", "Pangani", "Kasarani", "Mwiki", "Ruiru"] },
+      { id: "r3", name: "🚌 12 Jogoo Road", stages: ["Muthurwa", "Makadara", "Donholm", "Embakasi", "Pipeline"] }
+    ];
+
+    // base fare per segment (KES)
+    const BASE_SEGMENT_FARE = 20;
+    const PEAK_MULTIPLIER = 1.3;
+    const OFFPEAK_MULTIPLIER = 1.0;
+
+    // state
+    let isPeakMode = false;      // default off-peak (toggle active)
+    // overrides: key = `${routeId}|${minIdx}|${maxIdx}` -> override amount (final fare, ignores multiplier)
+    let fareOverrides = new Map();
+    // reports feed array (for display)
+    let reportsList = [];  // { id, type, routeName, description, timestamp, fareValue? }
+
+    // simulated live matatu counters (active matatus per route)
+    let activeMatatus = { r1: 7, r2: 5, r3: 9 };
+    let liveInterval = null;
+
+    // DOM elements
+    const navRouteSelect = document.getElementById('navRouteSelect');
+    const originStageSelect = document.getElementById('originStageSelect');
+    const destStageSelect = document.getElementById('destStageSelect');
+    const peakToggleBtn = document.getElementById('peakToggleBtn');
+    const peakModeLabel = document.getElementById('peakModeLabel');
+    const calculatedFareSpan = document.getElementById('calculatedFareAmount');
+    const overrideBadge = document.getElementById('overrideBadge');
+    const stagesPathContainer = document.getElementById('stagesPathContainer');
+    const routeStagesPreview = document.getElementById('routeStagesPreview');
+    const fareNote = document.getElementById('fareNote');
+    // live routes container
+    const liveRoutesContainer = document.getElementById('liveRoutesContainer');
+    // report selects
+    const reportRouteSelect = document.getElementById('reportRouteSelect');
+    const reportOriginSelect = document.getElementById('reportOriginSelect');
+    const reportDestSelect = document.getElementById('reportDestSelect');
+    const newFareAmountInput = document.getElementById('newFareAmount');
+    const submitFareReportBtn = document.getElementById('submitFareReportBtn');
+    const trafficRouteSelect = document.getElementById('trafficRouteSelect');
+    const trafficDescInput = document.getElementById('trafficDesc');
+    const submitTrafficBtn = document.getElementById('submitTrafficBtn');
+    const reportsFeedDiv = document.getElementById('reportsFeed');
+    const reportCountBadge = document.getElementById('reportCountBadge');
+
+    // helper: get current multiplier
+    function getCurrentMultiplier() {
+      return isPeakMode ? PEAK_MULTIPLIER : OFFPEAK_MULTIPLIER;
+    }
+
+    // get override if exists (symmetrical)
+    function getOverrideFare(routeId, fromIdx, toIdx) {
+      const minIdx = Math.min(fromIdx, toIdx);
+      const maxIdx = Math.max(fromIdx, toIdx);
+      const key = `${routeId}|${minIdx}|${maxIdx}`;
+      return fareOverrides.has(key) ? fareOverrides.get(key) : null;
+    }
+
+    // set override (symmetrical)
+    function setOverrideFare(routeId, fromIdx, toIdx, amount) {
+      const minIdx = Math.min(fromIdx, toIdx);
+      const maxIdx = Math.max(fromIdx, toIdx);
+      const key = `${routeId}|${minIdx}|${maxIdx}`;
+      fareOverrides.set(key, amount);
+    }
+
+    // calculate standard fare (before override)
+    function calcStandardFare(routeId, fromIdx, toIdx, multiplier) {
+      if (fromIdx === toIdx) return 0;
+      const segments = Math.abs(toIdx - fromIdx);
+      let raw = BASE_SEGMENT_FARE * segments * multiplier;
+      return Math.round(raw);
+    }
+
+    // get final fare considering overrides
+    function getFinalFare(routeId, fromIdx, toIdx) {
+      const override = getOverrideFare(routeId, fromIdx, toIdx);
+      if (override !== null) return override;
+      const multiplier = getCurrentMultiplier();
+      return calcStandardFare(routeId, fromIdx, toIdx, multiplier);
+    }
+
+    // update stage dropdowns based on selected route (for navigation panel)
+    function populateStageDropdowns(routeId, selectedOriginVal = null, selectedDestVal = null) {
+      const route = routesData.find(r => r.id === routeId);
+      if (!route) return;
+      const stages = route.stages;
+      // origin select
+      originStageSelect.innerHTML = '';
+      destStageSelect.innerHTML = '';
+      stages.forEach((stage, idx) => {
+        const opt1 = document.createElement('option');
+        opt1.value = idx;
+        opt1.textContent = stage;
+        const opt2 = document.createElement('option');
+        opt2.value = idx;
+        opt2.textContent = stage;
+        originStageSelect.appendChild(opt1);
+        destStageSelect.appendChild(opt2);
+      });
+      if (selectedOriginVal !== null && originStageSelect.options[selectedOriginVal]) originStageSelect.value = selectedOriginVal;
+      else originStageSelect.value = '0';
+      if (selectedDestVal !== null && destStageSelect.options[selectedDestVal]) destStageSelect.value = selectedDestVal;
+      else destStageSelect.value = stages.length > 1 ? '1' : '0';
+    }
+
+    // update route stages preview (middle-bottom)
+    function updateRoutePreview(routeId) {
+      const route = routesData.find(r => r.id === routeId);
+      if (route) {
+        routeStagesPreview.innerHTML = route.stages.map(s => `<span class="bg-gray-100 px-2 py-1 rounded-full text-xs">${s}</span>`).join('');
+      }
+    }
+
+    // update stage-to-stage path & fare display
+    function updateNavigationDisplay() {
+      const routeId = navRouteSelect.value;
+      const route = routesData.find(r => r.id === routeId);
+      if (!route) return;
+      const fromIdx = parseInt(originStageSelect.value, 10);
+      const toIdx = parseInt(destStageSelect.value, 10);
+      const stages = route.stages;
+
+      // build stages traversed list
+      let pathHtml = '';
+      const start = Math.min(fromIdx, toIdx);
+      const end = Math.max(fromIdx, toIdx);
+      for (let i = start; i <= end; i++) {
+        pathHtml += `<span class="stage-badge bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs font-medium">${stages[i]}</span>`;
+        if (i !== end) pathHtml += `<span class="text-gray-400 text-xs">→</span>`;
+      }
+      if (fromIdx === toIdx) pathHtml = `<span class="text-gray-400 text-sm">Same stage (no travel)</span>`;
+      stagesPathContainer.innerHTML = pathHtml || `<span class="text-gray-400 text-sm">Select stages</span>`;
+
+      const finalFare = getFinalFare(routeId, fromIdx, toIdx);
+      calculatedFareSpan.innerText = finalFare;
+      const overrideExists = getOverrideFare(routeId, fromIdx, toIdx) !== null;
+      if (overrideExists) {
+        overrideBadge.classList.remove('hidden');
+        fareNote.innerText = "📢 User-reported fare applied (overrides peak/off-peak)";
+      } else {
+        overrideBadge.classList.add('hidden');
+        const multiplier = getCurrentMultiplier();
+        if (isPeakMode) fareNote.innerText = "⚡ Peak multiplier (1.3x) active • standard fare";
+        else fareNote.innerText = "🌙 Off-peak standard fare • report changes below";
+      }
+    }
+
+    // refresh all UI linked to route/peak toggle
+    function refreshAllFareAndStages() {
+      updateNavigationDisplay();
+    }
+
+    // populate all route selects (nav, report, traffic)
+    function populateAllRouteSelectors() {
+      const optionsHtml = routesData.map(route => `<option value="${route.id}">${route.name}</option>`).join('');
+      navRouteSelect.innerHTML = optionsHtml;
+      reportRouteSelect.innerHTML = optionsHtml;
+      trafficRouteSelect.innerHTML = optionsHtml;
+
+      // set default selection and populate stage dropdowns for nav
+      if (routesData.length) {
+        const defaultRouteId = routesData[0].id;
+        navRouteSelect.value = defaultRouteId;
+        populateStageDropdowns(defaultRouteId, 0, 1);
+        updateRoutePreview(defaultRouteId);
+        // report & traffic selects dynamic stages (populate on change)
+        updateReportStageDropdowns(defaultRouteId);
+      }
+
+      // event: nav route change
+      navRouteSelect.addEventListener('change', (e) => {
+        const newRouteId = e.target.value;
+        populateStageDropdowns(newRouteId, 0, 1);
+        updateRoutePreview(newRouteId);
+        refreshAllFareAndStages();
+      });
+
+      originStageSelect.addEventListener('change', () => refreshAllFareAndStages());
+      destStageSelect.addEventListener('change', () => refreshAllFareAndStages());
+    }
+
+    // update stage dropdowns inside report fare section
+    function updateReportStageDropdowns(routeId) {
+      const route = routesData.find(r => r.id === routeId);
+      if (!route) return;
+      const stages = route.stages;
+      reportOriginSelect.innerHTML = '';
+      reportDestSelect.innerHTML = '';
+      stages.forEach((stage, idx) => {
+        const opt1 = document.createElement('option');
+        opt1.value = idx;
+        opt1.textContent = stage;
+        const opt2 = document.createElement('option');
+        opt2.value = idx;
+        opt2.textContent = stage;
+        reportOriginSelect.appendChild(opt1);
+        reportDestSelect.appendChild(opt2);
+      });
+      if (stages.length > 1) {
+        reportDestSelect.value = '1';
+      } else {
+        reportDestSelect.value = '0';
+      }
+      reportOriginSelect.value = '0';
+    }
+
+    // add report to feed UI
+    function addReportToFeed(report) {
+      reportsList.unshift(report);
+      if (reportsList.length > 12) reportsList.pop();
+      renderReportsFeed();
+    }
+
+    function renderReportsFeed() {
+      if (reportsList.length === 0) {
+        reportsFeedDiv.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">✨ No reports yet — help the community!</div>';
+        reportCountBadge.innerText = '0';
+        return;
+      }
+      reportCountBadge.innerText = reportsList.length;
+      reportsFeedDiv.innerHTML = reportsList.map(r => {
+        const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
+        if (r.type === 'fare') {
+          return `<div class="bg-white border-l-4 border-orange-400 p-2 rounded-md shadow-sm text-xs">
+                    <div class="flex justify-between"><span class="font-bold text-orange-700">💰 Fare report</span><span class="text-gray-400 text-[10px]">${timeStr}</span></div>
+                    <div class="text-gray-700">${r.routeName}: ${r.fromStage} → ${r.toStage} = ${r.fareValue} KES</div>
+                    <div class="text-gray-400 text-[10px]">👍 crowdsourced update</div>
+                  </div>`;
+        } else {
+          return `<div class="bg-white border-l-4 border-red-400 p-2 rounded-md shadow-sm text-xs">
+                    <div class="flex justify-between"><span class="font-bold text-red-600">🚦 Traffic alert</span><span class="text-gray-400 text-[10px]">${timeStr}</span></div>
+                    <div class="text-gray-700">${r.routeName} · ${r.description}</div>
+                  </div>`;
+        }
+      }).join('');
+    }
+
+    // handle fare report submission
+    function handleFareReport() {
+      const routeId = reportRouteSelect.value;
+      const route = routesData.find(r => r.id === routeId);
+      if (!route) return;
+      const fromIdx = parseInt(reportOriginSelect.value, 10);
+      const toIdx = parseInt(reportDestSelect.value, 10);
+      const newFare = parseFloat(newFareAmountInput.value);
+      if (isNaN(newFare) || newFare < 0) {
+        alert("Please enter a valid fare amount (KES)");
+        return;
+      }
+      if (fromIdx === toIdx) {
+        alert("Origin and destination can't be same for fare report.");
+        return;
+      }
+      const finalFareRounded = Math.round(newFare);
+      setOverrideFare(routeId, fromIdx, toIdx, finalFareRounded);
+      // add report to feed
+      const fromStage = route.stages[fromIdx];
+      const toStage = route.stages[toIdx];
+      addReportToFeed({
+        id: Date.now(),
+        type: 'fare',
+        routeName: route.name,
+        fromStage: fromStage,
+        toStage: toStage,
+        fareValue: finalFareRounded,
+        timestamp: Date.now()
+      });
+      // refresh navigation display if current selected route matches
+      if (navRouteSelect.value === routeId) {
+        refreshAllFareAndStages();
+      }
+      newFareAmountInput.value = '';
+      // show success toast-like feedback
+      const tempMsg = document.createElement('div');
+      tempMsg.innerText = `✅ Fare report recorded! ${fromStage} → ${toStage} : ${finalFareRounded} KES`;
+      tempMsg.className = 'fixed bottom-4 right-4 bg-green-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50';
+      document.body.appendChild(tempMsg);
+      setTimeout(() => tempMsg.remove(), 2500);
+    }
+
+    // handle traffic report
+    function handleTrafficReport() {
+      const routeId = trafficRouteSelect.value;
+      const route = routesData.find(r => r.id === routeId);
+      if (!route) return;
+      const description = trafficDescInput.value.trim();
+      if (description === "") {
+        alert("Please describe the traffic / incident");
+        return;
+      }
+      addReportToFeed({
+        id: Date.now(),
+        type: 'traffic',
+        routeName: route.name,
+        description: description,
+        timestamp: Date.now()
+      });
+      trafficDescInput.value = '';
+      const tempMsg = document.createElement('div');
+      tempMsg.innerText = `🚨 Traffic report added on ${route.name}`;
+      tempMsg.className = 'fixed bottom-4 left-4 bg-red-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50';
+      document.body.appendChild(tempMsg);
+      setTimeout(() => tempMsg.remove(), 2500);
+    }
+
+    // SIMULATED LIVE MATATU ROUTES (crowdsourced-like)
+    function updateLiveMatatuCounters() {
+      for (let route of routesData) {
+        // random walk simulation: between 2 and 18 active matatus
+        let current = activeMatatus[route.id] || 7;
+        let delta = Math.floor(Math.random() * 5) - 2; // -2..2
+        let newVal = current + delta;
+        newVal = Math.min(18, Math.max(2, newVal));
+        activeMatatus[route.id] = newVal;
+      }
+      renderLiveRoutes();
+    }
+
+    function renderLiveRoutes() {
+      liveRoutesContainer.innerHTML = '';
+      for (let route of routesData) {
+        const activeCount = activeMatatus[route.id];
+        const occupancyPercent = Math.min(100, Math.floor(activeCount * 7.5)); // just visual
+        let occupancyColor = 'bg-green-500';
+        if (activeCount > 11) occupancyColor = 'bg-red-500';
+        else if (activeCount > 7) occupancyColor = 'bg-orange-400';
+        const card = document.createElement('div');
+        card.className = 'border-b border-gray-100 pb-3 last:border-0';
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="font-semibold text-gray-800">${route.name}</span>
+            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">🚐 ${activeCount} active</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+            <div class="${occupancyColor} h-1.5 rounded-full" style="width: ${occupancyPercent}%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+            <span>crowdsourced frequency</span>
+            <span>${activeCount} matatus on road</span>
+          </div>
+          <div class="text-[11px] text-gray-400 mt-1">stages: ${route.stages.slice(0,3).join(' → ')} …</div>
+        `;
+        liveRoutesContainer.appendChild(card);
+      }
+    }
+
+    // initialise live updates interval
+    function startLiveSimulation() {
+      renderLiveRoutes();
+      if (liveInterval) clearInterval(liveInterval);
+      liveInterval = setInterval(() => {
+        updateLiveMatatuCounters();
+      }, 6000);
+    }
+
+    // peak toggle
+    function setupPeakToggle() {
+      const updatePeakUI = () => {
+        if (isPeakMode) {
+          peakToggleBtn.innerHTML = "⚡ Peak mode ON";
+          peakToggleBtn.classList.add('bg-orange-500', 'text-white');
+          peakToggleBtn.classList.remove('bg-gray-200', 'text-gray-700');
+          peakModeLabel.innerText = "PEAK HOURS (1.3x fare)";
+        } else {
+          peakToggleBtn.innerHTML = "🌙 Off-peak mode";
+          peakToggleBtn.classList.add('bg-gray-200', 'text-gray-700');
+          peakToggleBtn.classList.remove('bg-orange-500', 'text-white');
+          peakModeLabel.innerText = "OFF-PEAK (standard fare)";
+        }
+        refreshAllFareAndStages();
+      };
+      peakToggleBtn.addEventListener('click', () => {
+        isPeakMode = !isPeakMode;
+        updatePeakUI();
+      });
+      updatePeakUI();
+    }
+
+    // event listeners for report forms dynamic stages
+    function bindReportDynamicStages() {
+      reportRouteSelect.addEventListener('change', (e) => {
+        updateReportStageDropdowns(e.target.value);
+      });
+      // initialize first
+      if (routesData.length) updateReportStageDropdowns(routesData[0].id);
+    }
+
+    function bindEventListeners() {
+      submitFareReportBtn.addEventListener('click', handleFareReport);
+      submitTrafficBtn.addEventListener('click', handleTrafficReport);
+    }
+
+    // on load
+    function init() {
+      populateAllRouteSelectors();
+      bindReportDynamicStages();
+      bindEventListeners();
+      setupPeakToggle();
+      startLiveSimulation();
+      refreshAllFareAndStages();
+    }
+
+    init();
+  </script>
+</body>
+</html>
